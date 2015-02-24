@@ -7,14 +7,11 @@ SRCDIR=src
 CFLAGS=-Wall -I$(INCDIR)
 LDFLAGS=-lbluetooth -lncurses -lm -lGL -lGLU -lglut
 
-EXEC1=sensors_debug
-EXEC2=sensors_3D_debug
+EXEC=sensors_3D_debug
 
-all: setup $(EXEC1) $(EXEC2)
+all: setup $(EXEC)
 
-$(EXEC1): $(BDIR)/main.o
-	$(CC) -o $@ $^ $(LDFLAGS)
-$(EXEC2): $(BDIR)/main_debug.o
+$(EXEC): $(BDIR)/main.o
 	$(CC) -o $@ $^ $(LDFLAGS)
 $(BDIR)/%.o: $(SRCDIR)/%.c
 	$(CC) -o $@ -c $< $(CFLAGS)
