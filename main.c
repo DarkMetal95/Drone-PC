@@ -6,48 +6,83 @@
 #include <GL/gl.h>
 #include <GL/glut.h>
 #include <GL/glu.h>
+#include <math.h>
+
+#define OFFSET_SAMPLE 	500
+#define GYRO_SENS 	65.5
+#define FREQ 		30.0f
+
+void timer_int();
 
 int s, status;
-int accx, accy, accz, gyrox, gyroy, gyroz;
-float i;
+int accx, accy, accz;
+int gyrox, gyroy, gyroz;
+int gsens;
+double gyrox_offset, gyroy_offset, gyroz_offset;
+double ax = 0, ay = 0, az = 0;
+double gx = 0, gy = 0, gz = 0;
 
-int sign(int value)
+void get_sensor_data()
 {
-	if(value > 0x8000)
-		value = -((65535 - value) + 1);
-	return value;
+	char buf[6];
+
+	read(s, buf, sizeof(buf));
+	accx = atoi(buf);
+	read(s, buf, sizeof(buf));
+	accy = atoi(buf);
+	read(s, buf, sizeof(buf));
+	accz = atoi(buf);
+
+	read(s, buf, sizeof(buf));
+	gyrox = atoi(buf);
+	read(s, buf, sizeof(buf));
+	gyroy = atoi(buf);
+	read(s, buf, sizeof(buf));
+	gyroz = atoi(buf);
+
+	accx = sign(accx);
+	accy = sign(accy);
+	accz = sign(accz);
+
+	gyrox = (sign(gyrox) - (int) gyrox_offset) / GYRO_SENS;
+	gyroy = (sign(gyroy) - (int) gyroy_offset) / GYRO_SENS;
+	gyroz = (sign(gyroz) - (int) gyroz_offset) / GYRO_SENS;
 }
 
-void setup()
+void get_offset()
 {
-	glClearColor(255.0f, 255.0f, 255.0f, 255.0f);
-}
+	char buf[6];
+	int i;	
 
-void display()
-{
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	gluPerspective(50.0, 1.0, 1.0, 20.0);
-	glMatrixMode(GL_MODELVIEW);
-	gluLookAt(10.0f, 0.0f, 5.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f ,1.0f);
+	gyrox_offset = 0;
+	gyroy_offset = 0;
+	gyroz_offset = 0;
 
-	glColor3f(0.0f, 1.0f, 0.0f);
-	
-	glTranslatef(0.0f, -2.0f, 0.0f);
-	//glRotatef( 45, 0.0f, 1.0f, 0.0f);
-	//glRotatef(accy, 0.0f, 1.0f, 0.0f);
-	//glRotatef(accz, 0.0f, 0.0f, 1.0f);
-	glutSolidCube(1.0f);
+	for(i = 0; i < OFFSET_SAMPLE; i++)
+	{
+		read(s, buf, sizeof(buf));
+		read(s, buf, sizeof(buf));
+		read(s, buf, sizeof(buf));
 
-	glTranslatef(0.0f, 4.0f, 0.0f);
-	//glRotatef(accx, 1.0f, 0.0f, 0.0f);
-	//glRotatef(accy, 0.0f, 1.0f, 0.0f);
-	//glRotatef(accz, 0.0f, 0.0f, 1.0f);
-	glutSolidCube(1.0f);
+		read(s, buf, sizeof(buf));
+		gyrox = atoi(buf);
+		read(s, buf, sizeof(buf));
+		gyroy = atoi(buf);
+		read(s, buf, sizeof(buf));
+		gyroz = atoi(buf);
 
-	//glFlush();
-	glutSwapBuffers();
+		gyrox = sign(gyrox);
+		gyroy = sign(gyroy);
+		gyroz = sign(gyroz);
+
+		gyrox_offset += (double) gyrox;
+		gyroy_offset += (double) gyroy;
+		gyroz_offset += (double) gyroz;
+	}
+
+	gyrox_offset = gyrox_offset / OFFSET_SAMPLE;
+	gyroy_offset = gyroy_offset / OFFSET_SAMPLE;
+	gyroz_offset = gyroz_offset / OFFSET_SAMPLE;
 }
 
 void setup_bt()
@@ -72,31 +107,51 @@ void end()
 	close(s);
 }
 
+int sign(int value)
+{
+	if(value > 0x8000)
+		value = -((65535 - value) + 1);
+	return value;
+}
+
+void display()
+{
+	glClearColor(1.0, 1.0, 1.0, 1.0);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glLoadIdentity();
+	
+	//gluLookAt(10.0f, 0.0f, 5.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f ,1.0f);
+
+	glColor3f(0.0f, 1.0f, 0.0f);
+	glTranslatef(0.0f, 0.0f, -5.0f);
+	glRotatef(gx, 1.0f, 0.0f, 0.0f);
+	glRotatef(gy, 0.0f, 1.0f, 0.0f);
+
+	//glRotatef((float) gx, 1.0f, 0.0f, 0.0f);
+	//glRotatef((float) gy, 0.0f, 1.0f, 0.0f);
+	glutSolidCube(2.0f);
+
+	glFlush();
+	//glutSwapBuffers();
+}
+
 void timer_int()
 {		
-	char buf[6];
-	read(s, buf, sizeof(buf));
-	accx = atoi(buf);
-	read(s, buf, sizeof(buf));
-	accy = atoi(buf);
-	read(s, buf, sizeof(buf));
-	accz = atoi(buf);
+	get_sensor_data();	
 
-	read(s, buf, sizeof(buf));
-	gyrox = atoi(buf);
-	read(s, buf, sizeof(buf));
-	gyroy = atoi(buf);
-	read(s, buf, sizeof(buf));
-	gyroz = atoi(buf);
+	ay = atan2(accx, sqrt( pow(accy, 2) + pow(accz, 2))) * 180 / M_PI;
+	ax = atan2(accy, sqrt( pow(accx, 2) + pow(accz, 2))) * 180 / M_PI;
 
-	accx = sign(accx);
-	accy = sign(accy);
-	accz = sign(accz);
+	gx = gx + gyrox / FREQ;
+	gy = gy - gyroy / FREQ;
 
-	gyrox = sign(gyrox);
-	gyroy = sign(gyroy);
-	gyroz = sign(gyroz);
+	// complementary filter
+	// tau = DT*(A)/(1-A)
+	// = 0.48sec
+	gx = gx * 0.96 + ax * 0.04;
+	gy = gy * 0.96 + ay * 0.04;
 
+	glutTimerFunc(30, timer_int, 0);
 	glutPostRedisplay();
 }
 
@@ -105,58 +160,35 @@ void idle()
 	glutPostRedisplay();
 }
 
+void reshape (int width, int height) 
+{  
+	glViewport(0, 0, (GLsizei)width, (GLsizei)height);
+	glMatrixMode(GL_PROJECTION); 
+	glLoadIdentity();
+	gluPerspective(60, (GLfloat)width / (GLfloat)height, 1.0, 100.0); 
+	glMatrixMode(GL_MODELVIEW);
+} 
+
 int main(int argc, char **argv)
 {
-	i = 0;
+	setup_bt();	
 
+	get_offset();
 	glutInit(&argc, argv);
-	glutInitDisplayMode(GLUT_RGB | GLUT_DEPTH | GLUT_DOUBLE);
+	glutInitDisplayMode(GLUT_RGBA | GLUT_DEPTH | GLUT_SINGLE);
 	glutInitWindowSize(800,600);
 	glutCreateWindow("P0lyDr0n3 Remote Debug");
-	glEnable(GL_DEPTH_TEST);
-
-	const GLfloat light_ambient[]  = { 0.0f, 0.0f, 0.0f, 1.0f };
-	const GLfloat light_diffuse[]  = { 1.0f, 1.0f, 1.0f, 1.0f };
-	const GLfloat light_specular[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-	const GLfloat light_position[] = { 1.0f, 1.0f, 1.0f, 0.0f };
-
-	const GLfloat mat_ambient[]    = { 0.7f, 0.7f, 0.7f, 1.0f };
-	const GLfloat mat_diffuse[]    = { 0.8f, 0.8f, 0.8f, 1.0f };
-	const GLfloat mat_specular[]   = { 1.0f, 1.0f, 1.0f, 1.0f };
-	const GLfloat high_shininess[] = { 50.0f };
-
-	glClearColor(1,1,1,1);
-	glEnable(GL_CULL_FACE);
-	glCullFace(GL_BACK);
-
-	glEnable(GL_DEPTH_TEST);
-	glDepthFunc(GL_LESS);
-
-	glEnable(GL_LIGHT0);
-	glEnable(GL_NORMALIZE);
-	//glEnable(GL_COLOR_MATERIAL);
-
-	glLightfv(GL_LIGHT0, GL_AMBIENT,  light_ambient);
-	glLightfv(GL_LIGHT0, GL_DIFFUSE,  light_diffuse);
-	glLightfv(GL_LIGHT0, GL_SPECULAR, light_specular);
-	glLightfv(GL_LIGHT0, GL_POSITION, light_position);
-
-	glMaterialfv(GL_FRONT, GL_AMBIENT,   mat_ambient);
-	glMaterialfv(GL_FRONT, GL_DIFFUSE,   mat_diffuse);
-	glMaterialfv(GL_FRONT, GL_SPECULAR,  mat_specular);
-	glMaterialfv(GL_FRONT, GL_SHININESS, high_shininess);
 
 	glutDisplayFunc(display);
+	glutTimerFunc(30, timer_int, 0);
 	glutIdleFunc(idle);
-	//glutTimerFunc(50, timer_int, 0);
+	glutReshapeFunc(reshape);
 
-	setup();
-
-	//setup_bt();	
+	glEnable(GL_DEPTH_TEST);
 
 	glutMainLoop();
 	
-	//end();
+	end();
 	return 0;
 }
 
