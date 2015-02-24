@@ -42,21 +42,21 @@ void get_sensor_data()
 	accy = sign(accy);
 	accz = sign(accz);
 
-	gyrox = (sign(gyrox) - (int) gyrox_offset) / GYRO_SENS;
-	gyroy = (sign(gyroy) - (int) gyroy_offset) / GYRO_SENS;
-	gyroz = (sign(gyroz) - (int) gyroz_offset) / GYRO_SENS;
+	gyrox = (sign(gyrox) - (int)gyrox_offset) / GYRO_SENS;
+	gyroy = (sign(gyroy) - (int)gyroy_offset) / GYRO_SENS;
+	gyroz = (sign(gyroz) - (int)gyroz_offset) / GYRO_SENS;
 }
 
 void get_offset()
 {
 	char buf[6];
-	int i;	
+	int i;
 
 	gyrox_offset = 0;
 	gyroy_offset = 0;
 	gyroz_offset = 0;
 
-	for(i = 0; i < OFFSET_SAMPLE; i++)
+	for (i = 0; i < OFFSET_SAMPLE; i++)
 	{
 		read(s, buf, sizeof(buf));
 		read(s, buf, sizeof(buf));
@@ -73,9 +73,9 @@ void get_offset()
 		gyroy = sign(gyroy);
 		gyroz = sign(gyroz);
 
-		gyrox_offset += (double) gyrox;
-		gyroy_offset += (double) gyroy;
-		gyroz_offset += (double) gyroz;
+		gyrox_offset += (double)gyrox;
+		gyroy_offset += (double)gyroy;
+		gyroz_offset += (double)gyroz;
 	}
 
 	gyrox_offset = gyrox_offset / OFFSET_SAMPLE;
@@ -94,7 +94,7 @@ void setup_bt()
 	// set the connection parameters (who to connect to)
 	addr.rc_family = AF_BLUETOOTH;
 	addr.rc_channel = (uint8_t) 1;
-	str2ba( dest, &addr.rc_bdaddr );
+	str2ba(dest, &addr.rc_bdaddr);
 
 	// connect to server
 	status = connect(s, (struct sockaddr *)&addr, sizeof(addr));
@@ -107,7 +107,7 @@ void end()
 
 int sign(int value)
 {
-	if(value > 0x8000)
+	if (value > 0x8000)
 		value = -((65535 - value) + 1);
 	return value;
 }
@@ -116,21 +116,21 @@ void motors_draw(int motor1, int motor2, int motor3, int motor4)
 {
 	int i, j;
 
-	for(i = 0; i < 4; i++)
-		for(j = 0; j <= (motor1 * 30 / 100); j++)
-			mvprintw(j + PRINT_OFFSET_Y, i+1, "-");
+	for (i = 0; i < 4; i++)
+		for (j = 0; j <= (motor1 * 30 / 100); j++)
+			mvprintw(j + PRINT_OFFSET_Y, i + 1, "-");
 
-	for(i = 8; i < 12; i++)
-		for(j = 0; j <= (motor2 * 30 / 100); j++)
-			mvprintw(j + PRINT_OFFSET_Y, i+1, "-");
+	for (i = 8; i < 12; i++)
+		for (j = 0; j <= (motor2 * 30 / 100); j++)
+			mvprintw(j + PRINT_OFFSET_Y, i + 1, "-");
 
-	for(i = 16; i < 20; i++)
-		for(j = 0; j <= (motor3 * 30 / 100); j++)
-			mvprintw(j + PRINT_OFFSET_Y, i+1, "-");
+	for (i = 16; i < 20; i++)
+		for (j = 0; j <= (motor3 * 30 / 100); j++)
+			mvprintw(j + PRINT_OFFSET_Y, i + 1, "-");
 
-	for(i = 24; i < 28; i++)
-		for(j = 0; j <= (motor4 * 30 / 100); j++)
-			mvprintw(j + PRINT_OFFSET_Y, i+1, "-");
+	for (i = 24; i < 28; i++)
+		for (j = 0; j <= (motor4 * 30 / 100); j++)
+			mvprintw(j + PRINT_OFFSET_Y, i + 1, "-");
 
 	mvprintw(3, 0, "Motor1");
 	mvprintw(3, 8, "Motor2");
@@ -165,20 +165,20 @@ int main(int argc, char **argv)
 	xconsi = 0;
 	yconsi = 0;
 
-	initscr();	
-	mvprintw(0,0,"Waiting for Bluetooth connection...");
+	initscr();
+	mvprintw(0, 0, "Waiting for Bluetooth connection...");
 	setup_bt();
 	nodelay(stdscr, TRUE);
 	noecho();
 
 	get_offset();
-	
-	while(1)
+
+	while (1)
 	{
 		get_sensor_data();
 
-		ay = atan2(accx, sqrt( pow(accy, 2) + pow(accz, 2))) * 180 / M_PI;
-		ax = atan2(accy, sqrt( pow(accx, 2) + pow(accz, 2))) * 180 / M_PI;
+		ay = atan2(accx, sqrt(pow(accy, 2) + pow(accz, 2))) * 180 / M_PI;
+		ax = atan2(accy, sqrt(pow(accx, 2) + pow(accz, 2))) * 180 / M_PI;
 
 		gx = gx + gyrox / FREQ;
 		gy = gy + gyroy / FREQ;
@@ -191,47 +191,46 @@ int main(int argc, char **argv)
 
 		errorx = (double)xconsi - gx;
 		sum_errorx += errorx;
-		commandex = kpx * errorx + kix * sum_errorx + kdx * (errorx - prev_errorx);
+		commandex =
+			kpx * errorx + kix * sum_errorx + kdx * (errorx - prev_errorx);
 		prev_errorx = errorx;
 
 		errory = (double)yconsi - gx;
 		sum_errory += errory;
-		commandey = kpy * errory + kiy * sum_errory + kdy * (errory - prev_errory);
+		commandey =
+			kpy * errory + kiy * sum_errory + kdy * (errory - prev_errory);
 		prev_errory = errory;
 
-		mvprintw(0, 0,"Xvalue  = %f\t Yvalue  = %f\nXconsi = %d\t Yconsi = %d\nXcomma = %f\t Ycomma = %f", gx, gy, xconsi, yconsi, commandex, commandey);
+		mvprintw(0, 0,
+				 "Xvalue  = %f\t Yvalue  = %f\nXconsi = %d\t Yconsi = %d\nXcomma = %f\t Ycomma = %f",
+				 gx, gy, xconsi, yconsi, commandex, commandey);
 
-		/*motor1 -= commandex;
-		motor2 -= commandex;
-		motor3 += commandex;
-		motor4 += commandex;
+		/* motor1 -= commandex; motor2 -= commandex; motor3 += commandex;
+		   motor4 += commandex;
 
-		motor1 -= commandey;
-		motor3 -= commandey;
-		motor2 += commandey;
-		motor4 += commandey;*/
+		   motor1 -= commandey; motor3 -= commandey; motor2 += commandey;
+		   motor4 += commandey; */
 
-		//motors_draw(motor1, motor2, motor3, motor4);
+		// motors_draw(motor1, motor2, motor3, motor4);
 		key = getch();
 
-		if(key == 'z')
-			if(xconsi < 90)
-			xconsi++;
-		else if(key == 's')
-			if(xconsi > -90)
-			xconsi--;
-		else if(key == 'q')
-			if(yconsi > -90)
-			yconsi--;
-		else if(key == 'd')
-			if(yconsi < 90)
-			yconsi++;
+		if (key == 'z')
+			if (xconsi < 90)
+				xconsi++;
+			else if (key == 's')
+				if (xconsi > -90)
+					xconsi--;
+				else if (key == 'q')
+					if (yconsi > -90)
+						yconsi--;
+					else if (key == 'd')
+						if (yconsi < 90)
+							yconsi++;
 
 		refresh();
 	}
-	
+
 	endwin();
 	end();
 	return 0;
 }
-
